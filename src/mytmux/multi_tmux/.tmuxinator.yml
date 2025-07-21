@@ -1,0 +1,35 @@
+# ./.tmuxinator.yml
+
+name: Multi_Swarm
+root: ~/
+
+pre_window: export PS1=" \[$(tput sgr0)\]\[$(tput bold)\]\[\033[38;5;45m\]>>>\[$(tput sgr0)\] \[$(tput sgr0)\]"
+
+startup_window: Simulation
+# startup_pane: 0
+
+windows:
+  - Simulation: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; cd /home/zyme/PX4-Autopilot; make px4_sitl gz_x500
+  - GCS: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; cd /home/zyme/QGroundControl.AppImage; ./QGroundControl.AppImage
+  - uXRCE-DDS_Sim: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; MicroXRCEAgent udp4 -p 8888
+  - sensorCombined: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; sleep 1; ros2 launch px4_ros_com sensor_combined_listener.launch.py
+  - PositionControl: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; sleep 3; ros2 launch px4_offboard offboard_velocity_control.launch.py
+  - Visualizer: 
+      root: ~/
+      panes:
+        - clear; source ~/.bashrc; sleep 3;
