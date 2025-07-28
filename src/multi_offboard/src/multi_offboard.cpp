@@ -1,104 +1,117 @@
-#include <memory>
-#include <chrono>
-#include <rclcpp/rclcpp.hpp>
+/**
+ * @brief Offboard control for multiple vehicles (3)
+ * @file offboard_control_multi.cpp
+ * @author Adapted version
+ */
+
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <vector>
 
 using namespace std::chrono_literals;
+using namespace px4_msgs::msg;
 
-class MultiOffboardControl : public rclcpp::Node {
+class OffboardControlMulti : public rclcpp::Node
+{
 public:
-    MultiOffboardControl() : Node("multi_offboard_node") {
-        for (int id = 1; id <= 3; ++id) {
-            std::string ns = "/px4_" + std::to_string(id);
+	OffboardControlMulti()
+		: Node("offboard_control_multi")
+	{
+		vehicle_names_ = {"px4_1", "px4_2", "px4_3"};
 
-            // Publishers
-            offboard_pub[id] = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
-                ns + "/fmu/in/offboard_control_mode", 10);
+		for (const auto &name : vehicle_names_) {
+			VehicleState state;
+			state.name = name;
+			state.setpoint_counter = 0;
 
-            traj_pub[id] = this->create_publisher<px4_msgs::msg::TrajectorySetpoint>(
-                ns + "/fmu/in/trajectory_setpoint", 10);
+			std::string base_topic = "/" + name + "/fmu/in";
 
-            cmd_pub[id] = this->create_publisher<px4_msgs::msg::VehicleCommand>(
-                ns + "/fmu/in/vehicle_command", 10);
+			state.offboard_control_mode_pub = this->create_publisher<OffboardControlMode>(base_topic + "/offboard_control_mode", 10);
+			state.trajectory_setpoint_pub = this->create_publisher<TrajectorySetpoint>(base_topic + "/trajectory_setpoint", 10);
+			state.vehicle_command_pub = this->create_publisher<VehicleCommand>(base_topic + "/vehicle_command", 10);
 
-            // Timer for sending commands
-            timers[id] = this->create_wall_timer(100ms, [this, id]() {
-                publish_offboard_control(id);
-            });
+			vehicles_.push_back(state);
+		}
 
-            // Arm and set mode
-            arm_vehicle(id);
-            set_offboard_mode(id);
-        }
-    }
+		timer_ = this->create_wall_timer(100ms, std::bind(&OffboardControlMulti::timer_callback, this));
+	}
 
 private:
-    std::map<int, rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr> offboard_pub;
-    std::map<int, rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr> traj_pub;
-    std::map<int, rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr> cmd_pub;
-    std::map<int, rclcpp::TimerBase::SharedPtr> timers;
+	struct VehicleState {
+		std::string name;
+		uint64_t setpoint_counter;
+		rclcpp::Publisher<OffboardControlMode>::SharedPtr offboard_control_mode_pub;
+		rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_pub;
+		rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_pub;
+	};
 
-    uint64_t get_timestamp() {
-        return std::chrono::duration_cast<std::chrono::microseconds>(
-                   std::chrono::steady_clock::now().time_since_epoch())
-            .count();
-    }
+	std::vector<std::string> vehicle_names_;
+	std::vector<VehicleState> vehicles_;
+	rclcpp::TimerBase::SharedPtr timer_;
 
-    void arm_vehicle(int id) {
-        auto msg = px4_msgs::msg::VehicleCommand();
-        msg.timestamp = get_timestamp();
-        msg.param1 = 1.0;  // Arm
-        msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
-        msg.target_system = id;
-        msg.target_component = 1;
-        msg.source_system = id;
-        msg.source_component = 1;
-        msg.from_external = true;
-        cmd_pub[id]->publish(msg);
-    }
+	void timer_callback()
+	{
+		uint64_t timestamp = this->get_clock()->now().nanoseconds() / 1000;
 
-    void set_offboard_mode(int id) {
-        auto msg = px4_msgs::msg::VehicleCommand();
-        msg.timestamp = get_timestamp();
-        msg.param1 = 1.0;  // Offboard
-        msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE;
-        msg.target_system = id;
-        msg.target_component = 1;
-        msg.source_system = id;
-        msg.source_component = 1;
-        msg.from_external = true;
-        msg.param2 = 6.0;  // PX4_CUSTOM_MAIN_MODE_OFFBOARD
-        cmd_pub[id]->publish(msg);
-    }
+		for (auto &vehicle : vehicles_) {
 
-    void publish_offboard_control(int id) {
-        uint64_t timestamp = get_timestamp();
+			// Send set mode and arm after 10 setpoints
+			if (vehicle.setpoint_counter == 10) {
+				publish_vehicle_command(vehicle, VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+				publish_vehicle_command(vehicle, VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0);
+				RCLCPP_INFO(this->get_logger(), "[%s] Offboard mode + Arm command sent", vehicle.name.c_str());
+			}
 
-        // Offboard mode message
-        px4_msgs::msg::OffboardControlMode offboard_msg{};
-        offboard_msg.timestamp = timestamp;
-        offboard_msg.position = true;
-        offboard_msg.velocity = false;
-        offboard_msg.acceleration = false;
-        offboard_msg.attitude = false;
-        offboard_msg.body_rate = false;
-        offboard_pub[id]->publish(offboard_msg);
+			// Publish Offboard Control Mode
+			OffboardControlMode offboard_msg{};
+			offboard_msg.position = true;
+			offboard_msg.velocity = false;
+			offboard_msg.acceleration = false;
+			offboard_msg.attitude = false;
+			offboard_msg.body_rate = false;
+			offboard_msg.timestamp = timestamp;
+			vehicle.offboard_control_mode_pub->publish(offboard_msg);
 
-        // Trajectory setpoint message
-        px4_msgs::msg::TrajectorySetpoint traj_msg{};
-        traj_msg.timestamp = timestamp;
-        traj_msg.position = {float(id), float(id), -3.0f};  // each UAV moves to a different (x, y)
-        traj_msg.yaw = 0.0;
-        traj_pub[id]->publish(traj_msg);
-    }
+			// Publish trajectory setpoint
+			TrajectorySetpoint traj_msg{};
+			traj_msg.position = {0.0, 0.0, -5.0};  // Hover at 5m height
+			traj_msg.yaw = -3.14;                  // Face 180 degrees
+			traj_msg.timestamp = timestamp;
+			vehicle.trajectory_setpoint_pub->publish(traj_msg);
+
+			if (vehicle.setpoint_counter < 11) {
+				vehicle.setpoint_counter++;
+			}
+		}
+	}
+
+	void publish_vehicle_command(VehicleState &vehicle, uint16_t command, float param1 = 0.0, float param2 = 0.0)
+	{
+		VehicleCommand cmd{};
+		cmd.param1 = param1;
+		cmd.param2 = param2;
+		cmd.command = command;
+		cmd.target_system = 1;
+		cmd.target_component = 1;
+		cmd.source_system = 1;
+		cmd.source_component = 1;
+		cmd.from_external = true;
+		cmd.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+		vehicle.vehicle_command_pub->publish(cmd);
+	}
 };
 
-int main(int argc, char **argv) {
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<MultiOffboardControl>();
-    rclcpp::spin(node);
-    rclcpp::shutdown();
-    return 0;
+int main(int argc, char *argv[])
+{
+	std::cout << "Starting multi-vehicle offboard control node..." << std::endl;
+	rclcpp::init(argc, argv);
+	rclcpp::spin(std::make_shared<OffboardControlMulti>());
+	rclcpp::shutdown();
+	return 0;
 }
