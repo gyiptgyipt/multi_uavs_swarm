@@ -3,8 +3,6 @@
 name: Zyme's Multi Swarm
 root: ~/
 
-# pre_window: export PS1=" \[$(tput sgr0)\]\[$(tput bold)\]\[\033[38;5;45m\]>>>\[$(tput sgr0)\] \[$(tput sgr0)\]"
-
 startup_window: Simulation
 startup_pane: 1
 
@@ -12,7 +10,7 @@ windows:
   - Simulation:
       root: ~/
       panes:
-      - clear && source ~/.bashrc; cd /home/zyme/PX4-Autopilot/Tools/simulation/gazebo-classic; ./sitl_multiple_run.sh -n 15
+      - clear && source ~/.bashrc; cd /home/zyme/PX4-Autopilot/Tools/simulation/gazebo-classic; ./sitl_multiple_run.sh -n 20
 
   - QGroundControl:
       root: ~/
@@ -21,7 +19,7 @@ windows:
   - uXRCE-DDS_Sim: 
       root: ~/
       panes:
-        - clear; source ~/.bashrc; MicroXRCEAgent udp4 -p 8888 -m 1024
+        - clear; source ~/.bashrc; MicroXRCEAgent udp4 -p 8888 #-m 1024
   # - sensorCombined: 
   #     root: ~/
   #     panes:
