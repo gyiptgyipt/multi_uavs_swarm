@@ -23,6 +23,8 @@ ctrl::Control::Control() : Node("Control") {
 
   std::string package_share_dir = ament_index_cpp::get_package_share_directory("px4_swarm_controller");
   std::string config_path = package_share_dir + "/config/config.yaml";
+  // std::string config_path = package_share_dir + "/config/heart_config.yaml";
+
 
   YAML::Node config = YAML::LoadFile(std::filesystem::path(config_path).string());
   // YAML::Node config =
