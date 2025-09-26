@@ -1,5 +1,11 @@
 #  MULTI UAVS SWARM SIMULATION ROS2
 
+
+![UAV_show](/images/UAV_show.jpg)
+
+
+[YOUTUBE_DEMO_LINK](https://www.youtube.com/watch?v=xae4pNKRpkI)
+
 -Multi drones simulation with excutive modes
 
 requirements
@@ -14,10 +20,7 @@ gazebo classic - 11
 ### install gazebo classic 
 
 ```
-sudo apt install gazebo
-```
-```
-sudo apt install libgazebo-dev
+sudo apt install gazebo libgazebo-dev tmuxinator
 ```
 
 
@@ -53,10 +56,19 @@ colcon build
 
 # RUN 
 
--In tmux file.
-run multi_tmux ( the simulation will show up)
+```
+cd $your workspace/multi_uavs_swarm/src/mytmux/multi_tmux
+```
 
-than run 
+-In tmux folder.
+
+run multi_tmux ( the simulation will show up)
+```
+tmuxinator
+```
+
+than run in new terminal
+
 ```
 ros2 run px4_swarm_controller arm
 ```
