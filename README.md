@@ -20,7 +20,7 @@ gazebo classic - 11
 ### install gazebo classic 
 
 ```
-sudo apt install gazebo libgazebo-dev tmuxinator
+sudo apt install gazebo libgazebo-dev tmuxinator ros-humble-gazebo-ros ros-humble-catch-ros2
 ```
 
 
