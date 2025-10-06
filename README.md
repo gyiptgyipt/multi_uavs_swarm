@@ -20,8 +20,9 @@ gazebo classic - 11
 ### install gazebo classic 
 
 ```
-sudo apt install gazebo libgazebo-dev tmuxinator ros-humble-gazebo-ros ros-humble-catch-ros2
+sudo apt install doxygen gazebo libgazebo-dev tmuxinator ros-humble-gazebo-ros ros-humble-catch-ros2
 ```
+
 
 
 ### setup PX4-autopilot
@@ -39,6 +40,15 @@ make px4_sitl_default gazebo
 and you will see the Iris drone and the world
 
 
+
+# install MicroXRCE-DDS Agent
+
+-install MicroXRCE DDS Agent for px4 and ros communication as instruction link
+
+[MicroXRCE-DDS](https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html)
+
+
+
 # BUILD AND INSTALL 
 
 - go to your workspace
@@ -52,6 +62,7 @@ cd multi_uavs_swarm
 ```
 colcon build
 ```
+
 
 
 # RUN 
